@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FF8C00">
+    <title>バスケットボール指導理論学習プラットフォーム</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%23FF8C00' width='180' height='180'/><text x='90' y='100' font-size='60' fill='white' text-anchor='middle' font-weight='bold'>B</text></svg>">
+    
+    <style>
+        :root {
+            --primary-orange: #FF8C00;
+            --accent-red: #DC143C;
+            --dark-bg: #1a1a1a;
+            --light-bg: #f8f8f8;
+            --text-dark: #333;
+            --text-light: #666;
+            --border-color: #ddd;
+            --success-green: #28a745;
+            --warning-yellow: #ffc107;
+            --info-blue: #17a2b8;
+            --page-max-width: 1400px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            font-family: 'Segoe UI', 'Noto Sans JP', sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== ヘッダー ===== */
+        header {
+            background: linear-gradient(135deg, var(--primary-orange) 0%, #ff9f1c 100%);
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: var(--page-max-width);
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .app-subtitle {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-bar {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 24px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .search-bar input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .book-selector {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .book-selector:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .book-selector option {
+            background: var(--dark-bg);
+            color: white;
+        }
+
+        /* ===== メインコンテナ ===== */
+        .main-wrapper {
+            display: flex;
+            flex: 1;
+            max-width: var(--page-max-width);
+            width: 100%;
+            margin: 0 auto;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        /* ===== サイドバー（目次） ===== */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 2px solid var(--primary-orange);
+            font-weight: 700;
+            color: var(--primary-orange);
+            font-size: 0.95rem;
+        }
+
+        .toc-tree {
+            list-style: none;
+            padding: 0.5rem;
+        }
+
+        .toc-item {
+            margin: 0.25rem 0;
+        }
+
+        .toc-link {
+            display: block;
+            padding: 0.6rem 1rem;
+            color: var(--text-dark);
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .toc-link:hover {
+            background: var(--light-bg);
+            border-left-color: var(--primary-orange);
+            padding-left: 0.85rem;
+        }
+
+        .toc-link.active {
+            background: rgba(255, 140, 0, 0.1);
+            color: var(--primary-orange);
+            border-left-color: var(--primary-orange);
+            font-weight: 600;
+        }
+
+        .toc-chapter {
+            font-weight: 600;
+            color: var(--text-dark);
+            padding: 0.8rem 1rem 0.4rem 1rem;
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+
+        .toc-subsection {
+            padding-left: 2rem;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        /* ===== メインコンテンツ ===== */
+        .main-content {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+            padding: 2rem;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--primary-orange);
+            padding-bottom: 1rem;
+        }
+
+        .content-header-left h1 {
+            font-size: 1.8rem;
+            color: var(--text-dark);
+            margin-bottom: 0.3rem;
+        }
+
+        .content-header-left p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        .content-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-orange);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #e67e00;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(255, 140, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--light-bg);
+            color: var(--text-dark);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #f0f0f0;
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ===== セクションコンテンツ ===== */
+        .section-content {
+            line-height: 1.8;
+            font-size: 1rem;
+        }
+
+        .section-content h2 {
+            color: var(--primary-orange);
+            margin: 1.5rem 0 0.8rem 0;
+            font-size: 1.4rem;
+            border-left: 4px solid var(--accent-red);
+            padding-left: 1rem;
+        }
+
+        .section-content h3 {
+            color: var(--text-dark);
+            margin: 1.2rem 0 0.6rem 0;
+            font-size: 1.15rem;
+        }
+
+        .section-content p {
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        .section-content ul, .section-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .highlight {
+            background: rgba(255, 140, 0, 0.15);
+            border-left: 3px solid var(--primary-orange);
+            padding: 0.8rem 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .important {
+            background: rgba(220, 20, 60, 0.1);
+            border-left: 3px solid var(--accent-red);
+            padding: 0.8rem 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+
+        .figure-container {
+            margin: 1.5rem 0;
+            text-align: center;
+            background: var(--light-bg);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            cursor: zoom-in;
+            transition: transform 0.3s;
+        }
+
+        .figure-container img:hover {
+            transform: scale(1.02);
+        }
+
+        .figure-caption {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        /* ===== 右サイドバー（進捗・メモ） ===== */
+        .right-sidebar {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: linear-gradient(135deg, var(--primary-orange) 0%, #ff9f1c 100%);
+            color: white;
+            padding: 1rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .panel-content {
+            padding: 1rem;
+            max-height: calc(100vh - 400px);
+            overflow-y: auto;
+        }
+
+        /* ===== 進捗バー ===== */
+        .progress-item {
+            margin-bottom: 1rem;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--light-bg);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-orange) 0%, #ff9f1c 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .stat-card {
+            background: var(--light-bg);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.8rem;
+            border-left: 3px solid var(--primary-orange);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-orange);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        /* ===== メモパネル ===== */
+        .memo-form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .memo-input {
+            padding: 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .memo-input:focus {
+            outline: none;
+            border-color: var(--primary-orange);
+            box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
+        }
+
+        .memo-color-picker {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: var(--text-dark);
+            box-shadow: 0 0 0 2px white, 0 0 0 4px var(--text-dark);
+        }
+
+        .memo-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .memo-item {
+            background: var(--light-bg);
+            padding: 0.8rem;
+            border-radius: 4px;
+            margin-bottom: 0.6rem;
+            border-left: 3px solid;
+            font-size: 0.9rem;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .memo-item.color-yellow {
+            border-left-color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+
+        .memo-item.color-red {
+            border-left-color: #dc143c;
+            background: rgba(220, 20, 60, 0.1);
+        }
+
+        .memo-item.color-blue {
+            border-left-color: #17a2b8;
+            background: rgba(23, 162, 184, 0.1);
+        }
+
+        .memo-item.color-green {
+            border-left-color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+        }
+
+        .memo-item-text {
+            margin-bottom: 0.4rem;
+        }
+
+        .memo-item-actions {
+            display: flex;
+            gap: 0.4rem;
+            justify-content: flex-end;
+        }
+
+        .memo-delete-btn {
+            background: none;
+            border: none;
+            color: var(--accent-red);
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0.2rem 0.4rem;
+        }
+
+        .memo-delete-btn:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== ブックマーク ===== */
+        .bookmark-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .bookmark-item {
+            padding: 0.8rem;
+            background: var(--light-bg);
+            border-radius: 4px;
+            margin-bottom: 0.6rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid var(--accent-red);
+        }
+
+        .bookmark-item:hover {
+            background: #f0f0f0;
+            padding-left: 1rem;
+        }
+
+        /* ===== 検索結果 ===== */
+        .search-results {
+            display: none;
+        }
+
+        .search-results.active {
+            display: block;
+        }
+
+        .search-result-item {
+            background: var(--light-bg);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary-orange);
+        }
+
+        .search-result-item h4 {
+            color: var(--primary-orange);
+            margin-bottom: 0.4rem;
+        }
+
+        .search-result-book {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 0.4rem;
+        }
+
+        .search-result-text {
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .search-highlight {
+            background: rgba(255, 140, 0, 0.3);
+            font-weight: 600;
+        }
+
+        /* ===== モーダル ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .modal-close:hover {
+            color: var(--text-dark);
+        }
+
+        .image-modal img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* ===== フッター ===== */
+        footer {
+            background: var(--dark-bg);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.85rem;
+            margin-top: auto;
+        }
+
+        /* ===== レスポンシブ ===== */
+        @media (max-width: 1200px) {
+            .main-wrapper {
+                gap: 0.8rem;
+                padding: 0.8rem;
+            }
+            
+            .sidebar {
+                width: 220px;
+            }
+            
+            .right-sidebar {
+                width: 250px;
+            }
+            
+            .main-content {
+                padding: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-wrapper {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 250px;
+                order: 2;
+            }
+            
+            .main-content {
+                order: 1;
+                padding: 1rem;
+                max-height: none;
+            }
+            
+            .right-sidebar {
+                width: 100%;
+                flex-direction: row;
+                gap: 1rem;
+            }
+            
+            .panel {
+                flex: 1;
+                min-width: 250px;
+            }
+            
+            .panel-content {
+                max-height: none;
+            }
+            
+            .header-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header-controls {
+                flex-direction: column;
+            }
+            
+            .search-bar {
+                max-width: 100%;
+            }
+            
+            .app-title {
+                font-size: 1.3rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .app-title {
+                font-size: 1.1rem;
+            }
+            
+            .app-subtitle {
+                display: none;
+            }
+            
+            .book-selector {
+                width: 100%;
+            }
+            
+            .content-header {
+                flex-direction: column;
+            }
+            
+            .content-actions {
+                width: 100%;
+            }
+            
+            .btn {
+                flex: 1;
+                justify-content: center;
+            }
+            
+            .right-sidebar {
+                flex-direction: column;
+            }
+            
+            .panel {
+                min-width: auto;
+            }
+        }
+
+        /* ===== ローディング ===== */
+        .loading {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-light);
+        }
+
+        .loading-spinner {
+            border: 3px solid var(--light-bg);
+            border-top: 3px solid var(--primary-orange);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ===== ユーティリティ ===== */
+        .hidden {
+            display: none !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-light);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== ヘッダー ===== -->
+    <header>
+        <div class="header-container">
+            <div>
+                <div class="app-title">🏀 バスケ学習プラットフォーム</div>
+                <div class="app-subtitle">鈴木良和著書 8冊・横断学習</div>
+            </div>
+            <div class="header-controls">
+                <div class="search-bar">
+                    <input type="text" id="globalSearch" placeholder="キーワード検索...">
+                </div>
+                <select id="bookSelector" class="book-selector">
+                    <option value="">全書籍を表示</option>
+                    <option value="book_1">教科書1：技術を再定義する</option>
+                    <option value="book_2">教科書2：ファンダメンタルを疑う</option>
+                    <option value="book_3">教科書3：シューティング原理</option>
+                    <option value="book_4">教科書4：コーディネーション</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== メイン ===== -->
+    <div class="main-wrapper">
+        <!-- 左サイドバー：目次 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">📑 目次</div>
+            <ul class="toc-tree" id="tocTree">
+                <!-- 動的生成 -->
+            </ul>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content" id="mainContent">
+            <!-- セクション動的生成 -->
+        </main>
+
+        <!-- 右サイドバー -->
+        <aside class="right-sidebar">
+            <!-- 進捗パネル -->
+            <div class="panel">
+                <div class="panel-header">📊 学習進捗</div>
+                <div class="panel-content">
+                    <div class="progress-item">
+                        <div class="progress-label">
+                            <span>個人進捗</span>
+                            <span id="personalProgress">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="personalProgressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="progress-item">
+                        <div class="progress-label">
+                            <span>書籍別進捗</span>
+                        </div>
+                        <div id="bookProgressStats"></div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalSectionsRead">0</div>
+                        <div class="stat-label">セクション読了</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalMemos">0</div>
+                        <div class="stat-label">メモ数</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- メモパネル -->
+            <div class="panel">
+                <div class="panel-header">📝 メモ</div>
+                <div class="panel-content">
+                    <div class="memo-form">
+                        <textarea id="memoInput" class="memo-input" placeholder="このセクションのメモを入力..."></textarea>
+                        <div class="memo-color-picker" id="colorPicker">
+                            <div class="color-option selected" style="background: #ffc107;" data-color="yellow"></div>
+                            <div class="color-option" style="background: #dc143c;" data-color="red"></div>
+                            <div class="color-option" style="background: #17a2b8;" data-color="blue"></div>
+                            <div class="color-option" style="background: #28a745;" data-color="green"></div>
+                        </div>
+                        <button id="saveMemoBtn" class="btn btn-primary btn-sm" style="width: 100%;">メモを保存</button>
+                    </div>
+                    <div class="memo-list" id="memoList"></div>
+                </div>
+            </div>
+
+            <!-- ブックマークパネル -->
+            <div class="panel">
+                <div class="panel-header">⭐ ブックマーク</div>
+                <div class="panel-content">
+                    <div class="bookmark-list" id="bookmarkList"></div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- 画像拡大モーダル -->
+    <div class="modal" id="imageModal">
+        <div class="modal-content image-modal">
+            <button class="modal-close" onclick="closeModal('imageModal')">✕</button>
+            <img id="modalImage" src="" alt="">
+        </div>
+    </div>
+
+    <!-- フッター -->
+    <footer>
+        <p>© 2026 バスケットボール指導理論学習プラットフォーム | Phase 1 | <a href="#" style="color: inherit;">使い方</a></p>
+    </footer>
+
+    <!-- Service Worker登録 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').catch(err => {
+                console.log('Service Worker registration failed:', err);
+            });
+        }
+    </script>
+
+    <!-- ===== アプリケーションロジック ===== -->
+    <script>
+        // ===== グローバルデータ構造 =====
+        const APP = {
+            // コンテンツデータ（サンプル：Book 1）
+            books: [
+                {
+                    id: 'book_1',
+                    title: 'バスケットボールの教科書1',
+                    subtitle: '技術を再定義する',
+                    author: '鈴木良和',
+                    year: 2018,
+                    series: '教科書',
+                    chapters: [
+                        {
+                            id: 'ch_1_1',
+                            number: 1,
+                            title: '定義からはじめる',
+                            sections: [
+                                {
+                                    id: 'sec_1_1_1',
+                                    number: 1,
+                                    title: '優秀なコーチとは？',
+                                    content: `
+                                        <p>バスケットボール指導の本質は、選手の潜在能力を最大限に引き出すことです。優秀なコーチに求められるのは、単なる技術知識ではなく、心理学、情報理論、そして継続的な学習への姿勢です。</p>
+                                        
+                                        <h3>コーチの3つの責任</h3>
+                                        <ol>
+                                            <li><strong>選手の技術発展</strong>：正確な動作パターンの構築</li>
+                                            <li><strong>心理的成長</strong>：自信と決断力の育成</li>
+                                            <li><strong>戦術理解</strong>：ゲーム状況への適応能力</li>
+                                        </ol>
+                                        
+                                        <div class="highlight">
+                                            <strong>重要：</strong> 指導者は「教える人」ではなく「引き出す人」である必要があります。
+                                        </div>
+                                        
+                                        <p>選手一人ひとりが異なる学習速度、適性、心理状態を持っているため、一律的な指導方法では十分ではありません。データ駆動的な分析と個別対応が成功の鍵となります。</p>
+                                    `,
+                                    keywords: ['コーチ', '指導', '技術', '心理'],
+                                    readStatus: false,
+                                    notes: [],
+                                    bookmark: false
+                                },
+                                {
+                                    id: 'sec_1_1_2',
+                                    number: 2,
+                                    title: '情報理論とバスケットボール',
+                                    content: `
+                                        <p>バスケットボールは複雑な情報処理が求められるスポーツです。選手は瞬間的に多くの情報を処理し、最適な判断を下す必要があります。</p>
+                                        
+                                        <h3>情報処理の流れ</h3>
+                                        <p>視覚情報 → 認識 → 判断 → 実行 → フィードバック</p>
+                                        
+                                        <div class="important">
+                                            各段階での情報の正確性と速度が、プレーの質を決定します。
+                                        </div>
+                                        
+                                        <p>効果的な指導は、この情報処理の各段階を最適化することに焦点を当てるべきです。例えば、視覚的認識を高めるドリル、判断速度を向上させるゲーム形式の練習、実行精度を高めるテクニカルワークなど、段階的アプローチが必要です。</p>
+                                    `,
+                                    keywords: ['情報', '判断', '認識'],
+                                    readStatus: false,
+                                    notes: [],
+                                    bookmark: false
+                                }
+                            ]
+                        },
+                        {
+                            id: 'ch_1_2',
+                            number: 2,
+                            title: 'シューティング技術の原理',
+                            sections: [
+                                {
+                                    id: 'sec_1_2_1',
+                                    number: 1,
+                                    title: 'フォーム分析',
+                                    content: `
+                                        <p>シューティングフォームは、生体力学の法則に基づいて科学的に分析できます。</p>
+                                        
+                                        <h3>正確なシューティングの要素</h3>
+                                        <ul>
+                                            <li>脚部の安定性</li>
+                                            <li>軸足の正確性</li>
+                                            <li>膝の屈伸リズム</li>
+                                            <li>肘の角度と方向</li>
+                                            <li>リリースポイントの一貫性</li>
+                                            <li>フォロースルーの完成度</li>
+                                        </ul>
+                                        
+                                        <p>各要素は独立ではなく、相互に関連しています。効果的な指導では、全体的なシステムとして改善を進める必要があります。</p>
+                                    `,
+                                    keywords: ['シューティング', 'フォーム', '技術'],
+                                    readStatus: false,
+                                    notes: [],
+                                    bookmark: false
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+
+            // ユーザーデータ（ローカルストレージ）
+            userData: {
+                sectionProgress: {},  // { sectionId: boolean }
+                memos: {},            // { sectionId: [{ text, color, timestamp }] }
+                bookmarks: {},        // { sectionId: boolean }
+            },
+
+            // UI状態
+            ui: {
+                currentSection: null,
+                currentBook: null,
+                searchQuery: '',
+                selectedMemoColor: 'yellow'
+            }
+        };
+
+        // ===== ストレージ管理 =====
+        class StorageManager {
+            static STORAGE_KEY = 'basketball_app_data';
+
+            static load() {
+                const data = localStorage.getItem(this.STORAGE_KEY);
+                return data ? JSON.parse(data) : { sectionProgress: {}, memos: {}, bookmarks: {} };
+            }
+
+            static save(data) {
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+            }
+
+            static saveSectionStatus(sectionId, isRead) {
+                APP.userData.sectionProgress[sectionId] = isRead;
+                this.save(APP.userData);
+                updateProgressStats();
+            }
+
+            static addMemo(sectionId, text, color) {
+                if (!APP.userData.memos[sectionId]) {
+                    APP.userData.memos[sectionId] = [];
+                }
+                APP.userData.memos[sectionId].push({
+                    text,
+                    color,
+                    timestamp: new Date().toLocaleString('ja-JP')
+                });
+                this.save(APP.userData);
+            }
+
+            static deleteMemo(sectionId, index) {
+                if (APP.userData.memos[sectionId]) {
+                    APP.userData.memos[sectionId].splice(index, 1);
+                    this.save(APP.userData);
+                }
+            }
+
+            static toggleBookmark(sectionId) {
+                APP.userData.bookmarks[sectionId] = !APP.userData.bookmarks[sectionId];
+                this.save(APP.userData);
+                return APP.userData.bookmarks[sectionId];
+            }
+        }
+
+        // ===== DOMレンダリング =====
+        function renderTableOfContents() {
+            const tocTree = document.getElementById('tocTree');
+            tocTree.innerHTML = '';
+
+            APP.books.forEach(book => {
+                book.chapters.forEach(chapter => {
+                    const chapterDiv = document.createElement('div');
+                    chapterDiv.className = 'toc-chapter';
+                    chapterDiv.textContent = `第${chapter.number}章 ${chapter.title}`;
+                    chapterDiv.style.display = 'block';
+                    tocTree.appendChild(chapterDiv);
+
+                    chapter.sections.forEach(section => {
+                        const li = document.createElement('li');
+                        li.className = 'toc-item toc-subsection';
+                        
+                        const link = document.createElement('a');
+                        link.className = 'toc-link';
+                        link.textContent = section.title;
+                        link.onclick = () => displaySection(section.id, book.id);
+                        
+                        li.appendChild(link);
+                        tocTree.appendChild(li);
+                    });
+                });
+            });
+
+            // デフォルトで最初のセクションを表示
+            if (APP.books[0].chapters[0].sections[0]) {
+                const firstSection = APP.books[0].chapters[0].sections[0];
+                displaySection(firstSection.id, APP.books[0].id);
+            }
+        }
+
+        function displaySection(sectionId, bookId) {
+            const book = APP.books.find(b => b.id === bookId);
+            if (!book) return;
+
+            let targetSection = null;
+            for (const chapter of book.chapters) {
+                targetSection = chapter.sections.find(s => s.id === sectionId);
+                if (targetSection) break;
+            }
+
+            if (!targetSection) return;
+
+            APP.ui.currentSection = sectionId;
+            APP.ui.currentBook = bookId;
+
+            // ハイライト更新
+            document.querySelectorAll('.toc-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target?.classList.add('active');
+
+            // メインコンテンツ更新
+            const mainContent = document.getElementById('mainContent');
+            mainContent.innerHTML = `
+                <div class="content-header">
+                    <div class="content-header-left">
+                        <h1>${targetSection.title}</h1>
+                        <p>📖 ${book.title} / 第${targetSection.number}節</p>
+                    </div>
+                    <div class="content-actions">
+                        <button class="btn btn-secondary btn-sm" id="toggleReadBtn" onclick="toggleReadStatus('${sectionId}')">
+                            ${APP.userData.sectionProgress[sectionId] ? '✓ 読了済み' : '未読'}
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="toggleBookmarkBtn" onclick="toggleBookmark('${sectionId}')">
+                            ${APP.userData.bookmarks[sectionId] ? '⭐ ブックマーク済み' : '☆ ブックマーク'}
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="section-content" id="sectionContentDiv">
+                    ${targetSection.content}
+                </div>
+            `;
+
+            // メモリストとブックマークリストを更新
+            updateMemoList();
+            updateBookmarkList();
+            updateProgressStats();
+        }
+
+        function toggleReadStatus(sectionId) {
+            const newStatus = !APP.userData.sectionProgress[sectionId];
+            StorageManager.saveSectionStatus(sectionId, newStatus);
+            
+            const btn = document.getElementById('toggleReadBtn');
+            btn.textContent = newStatus ? '✓ 読了済み' : '未読';
+            btn.style.background = newStatus ? 'rgba(40, 167, 69, 0.2)' : 'var(--light-bg)';
+        }
+
+        function toggleBookmark(sectionId) {
+            const isBookmarked = StorageManager.toggleBookmark(sectionId);
+            const btn = document.getElementById('toggleBookmarkBtn');
+            btn.textContent = isBookmarked ? '⭐ ブックマーク済み' : '☆ ブックマーク';
+            updateBookmarkList();
+        }
+
+        function updateMemoList() {
+            const memoList = document.getElementById('memoList');
+            const memos = APP.userData.memos[APP.ui.currentSection] || [];
+
+            memoList.innerHTML = '';
+            memos.forEach((memo, index) => {
+                const memoDiv = document.createElement('div');
+                memoDiv.className = `memo-item color-${memo.color}`;
+                memoDiv.innerHTML = `
+                    <div class="memo-item-text">${escapeHtml(memo.text)}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.4rem;">${memo.timestamp}</div>
+                    <div class="memo-item-actions">
+                        <button class="memo-delete-btn" onclick="deleteMemo(${index})">削除</button>
+                    </div>
+                `;
+                memoList.appendChild(memoDiv);
+            });
+        }
+
+        function updateBookmarkList() {
+            const bookmarkList = document.getElementById('bookmarkList');
+            bookmarkList.innerHTML = '';
+
+            APP.books.forEach(book => {
+                book.chapters.forEach(chapter => {
+                    chapter.sections.forEach(section => {
+                        if (APP.userData.bookmarks[section.id]) {
+                            const item = document.createElement('div');
+                            item.className = 'bookmark-item';
+                            item.textContent = section.title;
+                            item.onclick = () => displaySection(section.id, book.id);
+                            bookmarkList.appendChild(item);
+                        }
+                    });
+                });
+            });
+
+            if (bookmarkList.children.length === 0) {
+                bookmarkList.innerHTML = '<div class="empty-state"><p>ブックマークなし</p></div>';
+            }
+        }
+
+        function updateProgressStats() {
+            let totalSections = 0;
+            let readSections = 0;
+
+            APP.books.forEach(book => {
+                book.chapters.forEach(chapter => {
+                    chapter.sections.forEach(section => {
+                        totalSections++;
+                        if (APP.userData.sectionProgress[section.id]) {
+                            readSections++;
+                        }
+                    });
+                });
+            });
+
+            const progress = totalSections > 0 ? Math.round((readSections / totalSections) * 100) : 0;
+
+            document.getElementById('personalProgress').textContent = `${progress}%`;
+            document.getElementById('personalProgressBar').style.width = `${progress}%`;
+            document.getElementById('totalSectionsRead').textContent = readSections;
+            document.getElementById('totalMemos').textContent = Object.values(APP.userData.memos).reduce((sum, arr) => sum + arr.length, 0);
+        }
+
+        // ===== メモ機能 =====
+        function saveMemo() {
+            const text = document.getElementById('memoInput').value;
+            if (!text.trim()) {
+                alert('メモを入力してください');
+                return;
+            }
+
+            const color = APP.ui.selectedMemoColor;
+            StorageManager.addMemo(APP.ui.currentSection, text, color);
+
+            document.getElementById('memoInput').value = '';
+            updateMemoList();
+            updateProgressStats();
+        }
+
+        function deleteMemo(index) {
+            StorageManager.deleteMemo(APP.ui.currentSection, index);
+            updateMemoList();
+            updateProgressStats();
+        }
+
+        // ===== グローバル検索 =====
+        function performSearch() {
+            const query = document.getElementById('globalSearch').value.toLowerCase();
+            APP.ui.searchQuery = query;
+
+            if (!query) {
+                if (APP.ui.currentSection) {
+                    displaySection(APP.ui.currentSection, APP.ui.currentBook);
+                }
+                return;
+            }
+
+            const results = [];
+            APP.books.forEach(book => {
+                book.chapters.forEach(chapter => {
+                    chapter.sections.forEach(section => {
+                        if (section.title.toLowerCase().includes(query) || 
+                            section.content.toLowerCase().includes(query)) {
+                            results.push({ section, book });
+                        }
+                    });
+                });
+            });
+
+            displaySearchResults(results, query);
+        }
+
+        function displaySearchResults(results, query) {
+            const mainContent = document.getElementById('mainContent');
+            
+            if (results.length === 0) {
+                mainContent.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>「${query}」に関連するセクションが見つかりません</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `<h2>検索結果：「${query}」（${results.length}件）</h2><div class="search-results active">`;
+            
+            results.forEach(result => {
+                const highlightedContent = result.section.content
+                    .substring(0, 200)
+                    .replace(new RegExp(`(${query})`, 'gi'), '<span class="search-highlight">$1</span>');
+                
+                html += `
+                    <div class="search-result-item">
+                        <h4>${result.section.title}</h4>
+                        <div class="search-result-book">📖 ${result.book.title}</div>
+                        <div class="search-result-text">${highlightedContent}...</div>
+                        <button class="btn btn-sm btn-primary" style="margin-top: 0.5rem;" onclick="displaySection('${result.section.id}', '${result.book.id}')">
+                            詳細を表示
+                        </button>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            mainContent.innerHTML = html;
+        }
+
+        // ===== ユーティリティ =====
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // ===== イベントリスナー =====
+        document.addEventListener('DOMContentLoaded', () => {
+            // ストレージから読み込み
+            APP.userData = StorageManager.load();
+
+            // TOC描画
+            renderTableOfContents();
+
+            // 色選択
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                    APP.ui.selectedMemoColor = this.dataset.color;
+                });
+            });
+
+            // メモ保存
+            document.getElementById('saveMemoBtn').addEventListener('click', saveMemo);
+
+            // 検索
+            const searchInput = document.getElementById('globalSearch');
+            searchInput.addEventListener('keyup', performSearch);
+            searchInput.addEventListener('change', performSearch);
+
+            // 初期進捗表示
+            updateProgressStats();
+        });
+
+        // 画像クリック時に拡大表示
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.parentElement?.classList.contains('figure-container')) {
+                document.getElementById('modalImage').src = e.target.src;
+                document.getElementById('imageModal').classList.add('active');
+            }
+        });
+    </script>
+</body>
+</html>
