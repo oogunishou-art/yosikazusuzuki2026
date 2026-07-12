@@ -1,0 +1,13 @@
+{
+  "title": "バスケットボール基礎講座",
+  "pages": [
+    { "src": "pages/page-001.jpg" },
+    { "src": "pages/page-002.jpg" },
+    { "src": "pages/page-003.jpg" },
+    { "src": "pages/page-004.jpg" },
+    { "src": "pages/page-005.jpg" },
+    { "src": "pages/page-006.jpg" },
+    { "src": "pages/page-007.jpg" },
+    { "src": "pages/page-008.jpg" }
+  ]
+}
