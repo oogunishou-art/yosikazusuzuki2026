@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>読書アプリ</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height:100%; overflow:hidden; background:#000; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+  body { -webkit-user-select:none; user-select:none; }
+
+  .app { display:flex; flex-direction:column; height:100vh; height:100dvh; }
+
+  /* ===== 上部バー（最小限） ===== */
+  .topbar {
+    flex: 0 0 auto;
+    display:flex; align-items:center; gap:6px;
+    padding: 6px 8px;
+    padding-top: max(6px, env(safe-area-inset-top));
+    background:#0e0e18; color:#d8d8e0;
+  }
+  .icon-btn {
+    background:none; border:none; color:#d8d8e0; font-size:19px;
+    padding:6px 8px; line-height:1; cursor:pointer; border-radius:6px;
+  }
+  .icon-btn:active { background:rgba(255,255,255,0.1); }
+  .book-select {
+    flex:1; min-width:0;
+    background:rgba(255,255,255,0.08); color:#d8d8e0; border:none;
+    border-radius:5px; font-size:12px; padding:6px 6px;
+  }
+  .book-select option { background:#1c1c2b; color:#d8d8e0; }
+
+  /* ===== 読書エリア ===== */
+  .reader { flex:1; position:relative; background:#000; overflow:hidden; touch-action:none; }
+  .page-viewport {
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .page-img {
+    max-width:100%; max-height:100%;
+    object-fit:contain;
+    transform-origin:center center;
+    will-change:transform;
+    -webkit-user-drag:none;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s ease;
+  }
+  .page-img.loaded { opacity:1; }
+
+  .page-badge {
+    position:absolute; top:8px; left:8px;
+    background:rgba(0,0,0,0.55); color:#ccc;
+    font-size:11px; padding:4px 9px; border-radius:10px;
+    pointer-events:none;
+  }
+  .center-msg {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#888; font-size:13px; text-align:center; padding:30px; line-height:1.7;
+  }
+  .center-msg code { background:#1c1c2b; padding:2px 5px; border-radius:3px; color:#bbb; }
+
+  /* ===== 下部バー（最小限） ===== */
+  .bottom-bar {
+    flex:0 0 auto;
+    display:flex; align-items:center; gap:8px;
+    padding: 6px 10px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    background:#0e0e18; color:#d8d8e0;
+  }
+  .page-scrub { flex:1; display:flex; align-items:center; gap:6px; }
+  .page-scrub input[type=range] { flex:1; height:20px; accent-color:#6c7bd6; }
+  .page-scrub-label { font-size:10px; color:#888; white-space:nowrap; min-width:44px; text-align:center; }
+  #bookmarkBtn.active { color:#e08a8a; }
+  #memoBtn { position:relative; }
+  .dot {
+    position:absolute; top:2px; right:2px;
+    width:8px; height:8px; background:#e08a8a; border-radius:50%;
+    display:none;
+  }
+  .dot.show { display:block; }
+
+  /* ===== ボトムシート（ダーク） ===== */
+  .sheet-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.55);
+    display:none; z-index:90;
+  }
+  .sheet-overlay.active { display:block; }
+  .bottom-sheet {
+    position:fixed; left:0; right:0; bottom:0;
+    background:#15151f; border-radius:14px 14px 0 0;
+    transform:translateY(100%); transition:transform .25s ease;
+    z-index:100; max-height:75vh; display:flex; flex-direction:column;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+  }
+  .bottom-sheet.active { transform:translateY(0); }
+  .sheet-handle { width:38px; height:4px; background:#3a3a4a; border-radius:2px; margin:8px auto 4px; }
+  .sheet-tabs { display:flex; border-bottom:1px solid #26263a; }
+  .sheet-tab {
+    flex:1; background:none; border:none; padding:10px 4px;
+    font-size:13px; color:#777;
+  }
+  .sheet-tab.active { color:#8f9fff; font-weight:bold; border-bottom:2px solid #8f9fff; }
+  .sheet-body { flex:1; overflow-y:auto; padding:14px; color:#ccc; }
+  .sheet-pane { display:none; }
+  .sheet-pane.active { display:block; }
+
+  .info-text {
+    font-size:11.5px; color:#888; line-height:1.6;
+    background:#1c1c2b; border-radius:7px; padding:9px 11px; margin-bottom:12px;
+  }
+
+  #memoInput {
+    width:100%; height:80px; padding:9px; border:1px solid #2e2e42;
+    background:#1c1c2b; color:#e0e0e5;
+    border-radius:7px; font-size:13px; font-family:inherit; resize:vertical;
+  }
+  .sheet-actions { display:flex; gap:8px; margin:9px 0 14px; }
+  .sheet-actions button {
+    padding:8px 16px; border:none; border-radius:7px;
+    background:#5b6bcf; color:#fff; font-size:13px;
+  }
+  .sheet-actions button.secondary { background:#2a2a3d; color:#bbb; }
+
+  .sheet-list .item {
+    background:#1c1c2b; border-left:3px solid #5b6bcf; border-radius:5px;
+    padding:9px 11px; margin-bottom:8px; font-size:12px; line-height:1.5; color:#ccc;
+  }
+  .sheet-list .item .item-book {
+    font-size:11px; color:#777; margin-top:4px;
+  }
+  .item-thumb {
+    display:flex; align-items:center; gap:10px;
+  }
+  .item-row {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:8px;
+  }
+  .item-row .item-main { flex:1; min-width:0; cursor:pointer; }
+  .item-pdf-btn {
+    flex:0 0 auto; background:#2a2a3d; color:#bbb; border:none;
+    border-radius:5px; padding:5px 8px; font-size:10.5px; white-space:nowrap;
+  }
+  .item-pdf-btn:active { background:#3a3a52; }
+  .thumb-box {
+    flex:0 0 46px; width:46px; height:62px;
+    background:#0e0e18; border-radius:4px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .thumb-box img { width:100%; height:100%; object-fit:cover; }
+  .thumb-label { font-size:13px; color:#ddd; }
+  .no-items { color:#777; text-align:center; padding:20px 10px; font-size:12px; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <button class="icon-btn" id="menuBtn">🔖</button>
+      <select class="book-select" id="bookSelector"><option value="">書籍を選択...</option></select>
+    </div>
+
+    <div class="reader" id="reader">
+      <div class="page-viewport" id="pageViewport">
+        <img id="pageImg" class="page-img" alt="ページ画像" draggable="false">
+      </div>
+      <div class="page-badge" id="pageBadge">-/-</div>
+      <div class="center-msg" id="centerMsg" style="display:none;"></div>
+    </div>
+
+    <div class="bottom-bar">
+      <button class="icon-btn" id="bookmarkBtn">☆</button>
+      <div class="page-scrub">
+        <input type="range" id="pageSlider" min="0" max="0" value="0">
+        <span class="page-scrub-label" id="scrubLabel">-/-</span>
+      </div>
+      <button class="icon-btn" id="memoBtn">📝<span class="dot" id="memoDot"></span></button>
+    </div>
+  </div>
+
+  <div class="sheet-overlay" id="sheetOverlay"></div>
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-tabs">
+      <button class="sheet-tab" data-tab="bookmarks">🔖 しおり</button>
+      <button class="sheet-tab" data-tab="memo">📝 メモ</button>
+    </div>
+    <div class="sheet-body">
+      <div class="sheet-pane" id="paneBookmarks">
+        <div class="info-text">☆ボタンを押すと、今見ているページに「しおり」を挟めます。読んでいる続きの位置は自動で保存されるので、しおりは「あとで見返したいページ」の目印として使ってください。</div>
+        <div class="sheet-list" id="bookmarksList"></div>
+      </div>
+      <div class="sheet-pane" id="paneMemo">
+        <textarea id="memoInput" placeholder="このページのメモを入力..."></textarea>
+        <div class="sheet-actions">
+          <button id="memoSaveBtn">保存</button>
+          <button id="memoDeleteBtn" class="secondary">削除</button>
+        </div>
+        <div class="info-text">各メモの「📄 PDF」を押すと、そのページの画像とメモだけを1枚のPDFとして書き出せます。項目本体をタップするとそのページへ移動します。</div>
+        <div class="sheet-list" id="memosList"></div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  // ==================== 状態 ====================
+  let books = [];
+  let currentBook = null;
+  let currentZip = null;
+  let bookPages = [];
+  let currentPageIndex = 0;
+  let imageUrlCache = {}; // pageNum -> objectURL（現在の本のみ）
+  const zipCache = {};    // bookId -> JSZip（本の切替を高速化）
+
+  const STORAGE_BOOKMARKS = 'bookmarks';
+  const STORAGE_MEMOS = 'memos';
+  const STORAGE_PROGRESS = 'progress';
+
+  const els = {
+    bookSelector: document.getElementById('bookSelector'),
+    pageImg: document.getElementById('pageImg'),
+    pageViewport: document.getElementById('pageViewport'),
+    pageBadge: document.getElementById('pageBadge'),
+    centerMsg: document.getElementById('centerMsg'),
+    pageSlider: document.getElementById('pageSlider'),
+    scrubLabel: document.getElementById('scrubLabel'),
+    bookmarkBtn: document.getElementById('bookmarkBtn'),
+    memoBtn: document.getElementById('memoBtn'),
+    memoDot: document.getElementById('memoDot'),
+    menuBtn: document.getElementById('menuBtn'),
+    sheetOverlay: document.getElementById('sheetOverlay'),
+    bottomSheet: document.getElementById('bottomSheet'),
+    memoInput: document.getElementById('memoInput'),
+    memoSaveBtn: document.getElementById('memoSaveBtn'),
+    memoDeleteBtn: document.getElementById('memoDeleteBtn'),
+    bookmarksList: document.getElementById('bookmarksList'),
+    memosList: document.getElementById('memosList'),
+  };
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+  function showCenterMsg(html) {
+    els.centerMsg.innerHTML = html;
+    els.centerMsg.style.display = 'flex';
+  }
+  function hideCenterMsg() { els.centerMsg.style.display = 'none'; }
+
+  // ==================== 初期化 ====================
+  async function init() {
+    if (window.location.protocol === 'file:') {
+      showCenterMsg(`<div><strong>⚠️ このファイルは直接開けません</strong><br><br>
+        ブラウザの制限により file:// では index.json や books/ 内のファイルを読み込めません。<br><br>
+        GitHub Pages にアップロードしてURL経由でアクセスするか、<br>
+        ローカルでは <code>python3 -m http.server</code> を実行して http://localhost:8000 で確認してください。</div>`);
+      return;
+    }
+    try {
+      const res = await fetch('index.json');
+      if (!res.ok) throw new Error(`index.json 取得失敗（HTTP ${res.status}）`);
+      const data = await res.json();
+      books = data.books || [];
+      if (books.length === 0) { showCenterMsg('index.json に書籍が登録されていません。'); return; }
+
+      els.bookSelector.innerHTML = books.map(b => `<option value="${b.id}">${escapeHtml(b.title)}</option>`).join('');
+      els.bookSelector.addEventListener('change', e => { if (e.target.value) loadBook(e.target.value); });
+
+      await loadBook(books[0].id);
+    } catch (err) {
+      console.error(err);
+      showCenterMsg(`書籍情報の読み込みに失敗しました。<br><br>詳細: ${escapeHtml(err.message)}`);
+    }
+  }
+
+  // ==================== 書籍読み込み ====================
+  async function loadBook(bookId) {
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+
+    Object.values(imageUrlCache).forEach(u => URL.revokeObjectURL(u));
+    imageUrlCache = {};
+
+    currentBook = book;
+    els.bookSelector.value = bookId;
+    hideCenterMsg();
+    els.pageImg.classList.remove('loaded');
+    showCenterMsg('読み込み中...');
+    resetZoom();
+
+    try {
+      const zip = await getZipForBook(book);
+      currentZip = zip;
+
+      const manifestFile = zip.file('manifest.json');
+      if (!manifestFile) throw new Error('manifest.json が見つかりません');
+      const manifest = JSON.parse(await manifestFile.async('text'));
+      bookPages = manifest.pages || [];
+      if (bookPages.length === 0) throw new Error('ページ情報がありません');
+
+      els.pageSlider.min = 0;
+      els.pageSlider.max = bookPages.length - 1;
+
+      hideCenterMsg();
+      currentPageIndex = getSavedProgress(bookId);
+      if (currentPageIndex >= bookPages.length) currentPageIndex = 0;
+      await showPage(currentPageIndex);
+      updateBookmarksList();
+      updateMemosList();
+    } catch (err) {
+      console.error('書籍読み込みエラー:', err);
+      showCenterMsg(`書籍の読み込みに失敗しました。<br><br>詳細: ${escapeHtml(err.message)}`);
+    }
+  }
+
+  async function getZipForBook(book) {
+    if (zipCache[book.id]) return zipCache[book.id];
+    if (!book.zipPath) throw new Error(`「${book.title}」に zipPath が設定されていません`);
+    const res = await fetch(book.zipPath);
+    if (!res.ok) throw new Error(`${book.zipPath} 取得失敗（HTTP ${res.status}）`);
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength === 0) throw new Error(`${book.zipPath} は空です`);
+    const zip = await JSZip.loadAsync(buf);
+    zipCache[book.id] = zip;
+    return zip;
+  }
+
+  // ==================== ページ画像取得・表示 ====================
+  async function getImageUrl(index) {
+    const pageInfo = bookPages[index];
+    if (!pageInfo) return null;
+    const pageNum = pageInfo.page_number;
+    if (imageUrlCache[pageNum]) return imageUrlCache[pageNum];
+
+    const imageFile = currentZip.file(pageInfo.image.path);
+    if (!imageFile) throw new Error(`画像 ${pageInfo.image.path} が見つかりません`);
+    const blob = await imageFile.async('blob');
+    const url = URL.createObjectURL(blob);
+    imageUrlCache[pageNum] = url;
+    return url;
+  }
+
+  function prefetch(index) {
+    if (index < 0 || index >= bookPages.length) return;
+    getImageUrl(index).catch(() => {});
+  }
+
+  async function showPage(index, landEdge) {
+    if (index < 0 || index >= bookPages.length) return;
+    currentPageIndex = index;
+
+    // 画像切り替え直後の見た目のガタつきを防ぐため、一旦中央にリセット
+    zoom.x = 0; zoom.y = 0;
+    applyTransform(false);
+
+    const pageInfo = bookPages[index];
+    els.pageBadge.textContent = `${pageInfo.page_number}/${bookPages.length}`;
+    els.scrubLabel.textContent = `${pageInfo.page_number}/${bookPages.length}`;
+    els.pageSlider.value = index;
+
+    els.pageImg.classList.remove('loaded');
+    try {
+      const url = await getImageUrl(index);
+      els.pageImg.src = url;
+      els.pageImg.onload = () => {
+        els.pageImg.classList.add('loaded');
+        // 新しいページの実サイズが確定してから、着地位置（端）を反映する
+        requestAnimationFrame(() => applyLandingPosition(landEdge));
+      };
+    } catch (err) {
+      console.error(err);
+      showCenterMsg(`ページを読み込めません<br>${escapeHtml(err.message)}`);
+    }
+
+    prefetch(index + 1);
+    prefetch(index - 1);
+
+    saveProgress(currentBook.id, index);
+    updateBookmarkBtn();
+    updateMemoDot();
+  }
+
+  // ズームを維持したままページを送るときの「読み始め位置」を反映する
+  // landEdge: 'right' = ページの右端から読み始める（ズームしていなければ何もしない）
+  function applyLandingPosition(landEdge) {
+    if (zoom.scale <= 1.01) return; // ズームしていなければ中央のままでよい
+    const { maxX } = getPanBounds();
+    if (landEdge === 'right') {
+      zoom.x = -maxX; // 右端を表示
+    } else if (landEdge === 'left') {
+      zoom.x = maxX; // 左端を表示
+    }
+    zoom.y = 0;
+    applyTransform(false);
+  }
+
+  // ページ送り／戻しのどちらも、ズーム中は「ページの右端」から読み始められるようにする
+  function nextPage() { if (currentPageIndex < bookPages.length - 1) showPage(currentPageIndex + 1, 'right'); }
+  function previousPage() { if (currentPageIndex > 0) showPage(currentPageIndex - 1, 'right'); }
+
+  els.pageSlider.addEventListener('input', e => { showPage(parseInt(e.target.value, 10)); });
+
+  // ==================== ピンチズーム & 左右フリック ====================
+  const zoom = { scale: 1, x: 0, y: 0 };
+  const gesture = {
+    mode: null, lastDist: null, lastMidX: null, lastMidY: null,
+    startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false, lastTapTime: 0,
+    edgePullPos: 0, edgePullNeg: 0
+  };
+  const PAGE_TURN_THRESHOLD = 55; // この量だけ「端を超えて」押し込むとページが送られる
+
+  function applyTransform(animate) {
+    els.pageImg.style.transition = animate ? 'transform .2s ease' : 'none';
+    els.pageImg.style.transform = `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})`;
+  }
+  function resetZoom() {
+    zoom.scale = 1; zoom.x = 0; zoom.y = 0;
+    applyTransform(false);
+  }
+  function clampScale(s) { return Math.min(4, Math.max(1, s)); }
+  function dist(t1, t2) { return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY); }
+
+  // 現在の拡大率で、画像を動かせる最大量（＝画像の端）を計算
+  function getPanBounds() {
+    const vw = els.pageViewport.clientWidth, vh = els.pageViewport.clientHeight;
+    const baseW = els.pageImg.offsetWidth, baseH = els.pageImg.offsetHeight;
+    return {
+      maxX: Math.max(0, (baseW * zoom.scale - vw) / 2),
+      maxY: Math.max(0, (baseH * zoom.scale - vh) / 2),
+    };
+  }
+
+  els.pageViewport.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      gesture.mode = 'pinch';
+      gesture.lastDist = dist(e.touches[0], e.touches[1]);
+      gesture.lastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      gesture.lastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    } else if (e.touches.length === 1) {
+      gesture.mode = 'pending';
+      gesture.startX = gesture.lastX = e.touches[0].clientX;
+      gesture.startY = gesture.lastY = e.touches[0].clientY;
+      gesture.moved = false;
+      gesture.edgePullPos = 0;
+      gesture.edgePullNeg = 0;
+    }
+  }, { passive: true });
+
+  els.pageViewport.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (gesture.mode === 'pinch' && e.touches.length === 2) {
+      const d = dist(e.touches[0], e.touches[1]);
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (gesture.lastDist) zoom.scale = clampScale(zoom.scale * (d / gesture.lastDist));
+      zoom.x += midX - gesture.lastMidX;
+      zoom.y += midY - gesture.lastMidY;
+      gesture.lastDist = d; gesture.lastMidX = midX; gesture.lastMidY = midY;
+      applyTransform(false);
+    } else if ((gesture.mode === 'pending' || gesture.mode === 'pan') && e.touches.length === 1) {
+      const x = e.touches[0].clientX, y = e.touches[0].clientY;
+      const dx = x - gesture.lastX, dy = y - gesture.lastY; // 直前の位置からの移動量
+      const totalDx = x - gesture.startX, totalDy = y - gesture.startY;
+      gesture.lastX = x; gesture.lastY = y;
+
+      if (!gesture.moved) {
+        if (Math.hypot(totalDx, totalDy) > 8) {
+          gesture.moved = true;
+          gesture.mode = 'pan';
+        } else {
+          return; // わずかな指のブレはタップ／ダブルタップ判定のため無視
+        }
+      }
+
+      const { maxX, maxY } = getPanBounds();
+
+      // 横方向：端（maxX）に到達したら、それ以上はページ送り用の「押し込み量」として蓄積する
+      let newX = zoom.x + dx;
+      if (newX > maxX) {
+        gesture.edgePullPos += (newX - maxX);
+        newX = maxX;
+      } else if (newX < -maxX) {
+        gesture.edgePullNeg += (-maxX - newX);
+        newX = -maxX;
+      } else {
+        gesture.edgePullPos = 0;
+        gesture.edgePullNeg = 0;
+      }
+      zoom.x = newX;
+
+      // 縦方向：単純に端の範囲内でパン
+      zoom.y = Math.min(maxY, Math.max(-maxY, zoom.y + dy));
+
+      applyTransform(false);
+    }
+  }, { passive: false });
+
+  els.pageViewport.addEventListener('touchend', e => {
+    if (gesture.mode === 'pinch') {
+      if (e.touches.length === 1) {
+        gesture.mode = 'pan';
+        gesture.moved = true;
+        gesture.edgePullPos = 0;
+        gesture.edgePullNeg = 0;
+        gesture.lastX = e.touches[0].clientX;
+        gesture.lastY = e.touches[0].clientY;
+      } else if (e.touches.length === 0) {
+        if (zoom.scale < 1.05) resetZoom();
+        gesture.mode = null;
+      }
+      return;
+    }
+    if (gesture.mode === 'pan') {
+      // 端まで押し込んだ量がしきい値を超えていればページ送り
+      if (gesture.edgePullPos > PAGE_TURN_THRESHOLD) nextPage();
+      else if (gesture.edgePullNeg > PAGE_TURN_THRESHOLD) previousPage();
+      gesture.mode = null;
+      return;
+    }
+    if (gesture.mode === 'pending') {
+      const now = Date.now();
+      if (!gesture.moved) {
+        if (now - gesture.lastTapTime < 300) {
+          if (zoom.scale > 1.01) { resetZoom(); }
+          else { zoom.scale = 2.4; applyTransform(true); }
+          gesture.lastTapTime = 0;
+        } else {
+          gesture.lastTapTime = now;
+        }
+      }
+      gesture.mode = null;
+    }
+  }, { passive: true });
+
+  // ==================== しおり（ブックマーク） ====================
+  function getBookmarks() { return JSON.parse(localStorage.getItem(STORAGE_BOOKMARKS) || '{}'); }
+  function isBookmarked(pageNum) { return !!getBookmarks()[`${currentBook.id}:${pageNum}`]; }
+  function updateBookmarkBtn() {
+    const pageNum = bookPages[currentPageIndex].page_number;
+    const on = isBookmarked(pageNum);
+    els.bookmarkBtn.textContent = on ? '★' : '☆';
+    els.bookmarkBtn.classList.toggle('active', on);
+  }
+  els.bookmarkBtn.addEventListener('click', () => {
+    const pageNum = bookPages[currentPageIndex].page_number;
+    const bookmarks = getBookmarks();
+    const key = `${currentBook.id}:${pageNum}`;
+    if (bookmarks[key]) delete bookmarks[key];
+    else bookmarks[key] = { bookId: currentBook.id, pageNum };
+    localStorage.setItem(STORAGE_BOOKMARKS, JSON.stringify(bookmarks));
+    updateBookmarkBtn();
+    updateBookmarksList();
+  });
+  async function updateBookmarksList() {
+    const items = Object.values(getBookmarks())
+      .filter(b => b.bookId === currentBook.id)
+      .sort((a, b) => a.pageNum - b.pageNum);
+
+    if (items.length === 0) {
+      els.bookmarksList.innerHTML = '<div class="no-items">しおりはまだありません</div>';
+      return;
+    }
+
+    // 先にページ番号だけで枠を表示し、サムネイルは後から差し込む
+    els.bookmarksList.innerHTML = items.map(it => `
+      <div class="item item-thumb" onclick="goToPageNum(${it.pageNum})">
+        <div class="thumb-box" id="thumb-${it.pageNum}"></div>
+        <div class="thumb-label">ページ ${it.pageNum}</div>
+      </div>`).join('');
+
+    for (const it of items) {
+      try {
+        const idx = bookPages.findIndex(p => p.page_number === it.pageNum);
+        if (idx < 0) continue;
+        const url = await getImageUrl(idx);
+        const box = document.getElementById(`thumb-${it.pageNum}`);
+        if (box) box.innerHTML = `<img src="${url}" alt="ページ${it.pageNum}のサムネイル">`;
+      } catch (e) { /* サムネイル取得失敗時はページ番号のみ表示 */ }
+    }
+  }
+  function goToPageNum(pageNum) {
+    const idx = bookPages.findIndex(p => p.page_number === pageNum);
+    if (idx >= 0) showPage(idx);
+    closeSheet();
+  }
+
+  // ==================== メモ ====================
+  function getMemos() { return JSON.parse(localStorage.getItem(STORAGE_MEMOS) || '{}'); }
+  function currentMemoKey() { return `${currentBook.id}:${bookPages[currentPageIndex].page_number}`; }
+  function updateMemoDot() {
+    const memos = getMemos();
+    els.memoDot.classList.toggle('show', !!memos[currentMemoKey()]);
+  }
+  els.memoSaveBtn.addEventListener('click', () => {
+    const text = els.memoInput.value.trim();
+    const memos = getMemos();
+    const key = currentMemoKey();
+    if (text) memos[key] = { bookId: currentBook.id, pageNum: bookPages[currentPageIndex].page_number, text, timestamp: new Date().toISOString() };
+    else delete memos[key];
+    localStorage.setItem(STORAGE_MEMOS, JSON.stringify(memos));
+    updateMemoDot();
+    updateMemosList();
+  });
+  els.memoDeleteBtn.addEventListener('click', () => {
+    const memos = getMemos();
+    delete memos[currentMemoKey()];
+    localStorage.setItem(STORAGE_MEMOS, JSON.stringify(memos));
+    els.memoInput.value = '';
+    updateMemoDot();
+    updateMemosList();
+  });
+  function updateMemosList() {
+    const items = Object.entries(getMemos())
+      .sort((a, b) => {
+        if (a[1].bookId !== b[1].bookId) {
+          const ta = (books.find(bk => bk.id === a[1].bookId) || {}).title || '';
+          const tb = (books.find(bk => bk.id === b[1].bookId) || {}).title || '';
+          return ta.localeCompare(tb, 'ja');
+        }
+        return a[1].pageNum - b[1].pageNum;
+      });
+    els.memosList.innerHTML = items.length === 0
+      ? '<div class="no-items">メモはまだありません</div>'
+      : items.map(([key, m]) => {
+          const book = books.find(bk => bk.id === m.bookId);
+          const title = book ? book.title : '(不明な書籍)';
+          return `
+          <div class="item">
+            <div class="item-row">
+              <div class="item-main" onclick="jumpToMemo('${m.bookId}', ${m.pageNum})">
+                <strong>ページ ${m.pageNum}</strong><br>${escapeHtml(m.text.substring(0, 80))}${m.text.length > 80 ? '…' : ''}
+                <div class="item-book">${escapeHtml(title)}</div>
+              </div>
+              <button class="item-pdf-btn" onclick="event.stopPropagation(); exportSingleMemoToPdf(event, '${m.bookId}', ${m.pageNum});">📄 PDF</button>
+            </div>
+          </div>`;
+        }).join('');
+  }
+
+  // メモ一覧からのタップ：本が違う場合は読み込んでからページへ移動
+  async function jumpToMemo(bookId, pageNum) {
+    if (!currentBook || currentBook.id !== bookId) {
+      await loadBook(bookId);
+    }
+    goToPageNum(pageNum);
+  }
+
+  // ==================== メモをPDFに書き出す（1件ずつ） ====================
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+  function getImageDimensions(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  // 日本語テキストをCanvasに描画して画像化する（jsPDFの標準フォントは日本語非対応で文字化けするため）
+  function renderTextToImage(text, maxWidthPt, fontSizePt, color) {
+    color = color || '#111111';
+    const dpr = 2; // くっきり表示させるための拡大係数
+    const lineHeightPt = Math.round(fontSizePt * 1.55);
+    const fontSpec = `${fontSizePt}px "Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif`;
+
+    const measureCanvas = document.createElement('canvas');
+    const mctx = measureCanvas.getContext('2d');
+    mctx.font = fontSpec;
+
+    const rawLines = String(text).split('\n');
+    const lines = [];
+    rawLines.forEach(raw => {
+      if (raw === '') { lines.push(''); return; }
+      let current = '';
+      for (const ch of raw) {
+        const test = current + ch;
+        if (current !== '' && mctx.measureText(test).width > maxWidthPt) {
+          lines.push(current);
+          current = ch;
+        } else {
+          current = test;
+        }
+      }
+      if (current) lines.push(current);
+    });
+    if (lines.length === 0) lines.push('');
+
+    const paddingPt = 6;
+    const heightPt = lines.length * lineHeightPt + paddingPt * 2;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(maxWidthPt * dpr);
+    canvas.height = Math.ceil(heightPt * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, maxWidthPt, heightPt);
+    ctx.fillStyle = color;
+    ctx.font = fontSpec;
+    ctx.textBaseline = 'top';
+    lines.forEach((line, i) => {
+      ctx.fillText(line, 0, paddingPt + i * lineHeightPt);
+    });
+
+    return { dataUrl: canvas.toDataURL('image/png'), widthPt: maxWidthPt, heightPt };
+  }
+
+  // メモ一覧の「📄 PDF」ボタン：そのページの画像＋メモ本文だけをPDFにする
+  async function exportSingleMemoToPdf(evt, bookId, pageNum) {
+    const memos = getMemos();
+    const key = `${bookId}:${pageNum}`;
+    const memo = memos[key];
+    if (!memo) { alert('このメモは見つかりませんでした。'); return; }
+
+    const btn = evt ? evt.currentTarget : null;
+    const originalLabel = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+    try {
+      const book = books.find(bk => bk.id === bookId);
+      const title = book ? book.title : bookId;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 32;
+      const contentW = pageW - margin * 2;
+
+      // 見出し（書籍名・ページ番号）を画像化して埋め込み
+      const header = renderTextToImage(`${title} － ページ ${pageNum}`, contentW, 15, '#111111');
+      doc.addImage(header.dataUrl, 'PNG', margin, margin, header.widthPt, header.heightPt);
+      let cursorY = margin + header.heightPt + 14;
+
+      // ページ画像
+      try {
+        const zip = await getZipForBook(book);
+        const manifest = JSON.parse(await zip.file('manifest.json').async('text'));
+        const pageInfo = manifest.pages.find(p => p.page_number === pageNum);
+        if (pageInfo) {
+          const imageFile = zip.file(pageInfo.image.path);
+          const blob = await imageFile.async('blob');
+          const imgDataUrl = await blobToDataUrl(blob);
+          const dims = await getImageDimensions(imgDataUrl);
+          const maxH = pageH * 0.55;
+          let w = contentW, h = (dims.height / dims.width) * w;
+          if (h > maxH) { h = maxH; w = (dims.width / dims.height) * h; }
+          const x = margin + (contentW - w) / 2;
+          doc.addImage(imgDataUrl, 'JPEG', x, cursorY, w, h);
+          cursorY += h + 20;
+        }
+      } catch (e) { console.error('PDF用画像取得エラー:', e); }
+
+      // メモ本文（日本語のためCanvas経由で画像化）
+      const body = renderTextToImage(memo.text, contentW, 13, '#222222');
+      doc.addImage(body.dataUrl, 'PNG', margin, cursorY, body.widthPt, body.heightPt);
+
+      const safeTitle = title.replace(/[\\/:*?"<>|]/g, '');
+      doc.save(`${safeTitle}_p${pageNum}_メモ.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert('PDFの書き出しに失敗しました: ' + err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+    }
+  }
+
+  // ==================== 進捗保存 ====================
+  function saveProgress(bookId, index) {
+    const p = JSON.parse(localStorage.getItem(STORAGE_PROGRESS) || '{}');
+    p[bookId] = index;
+    localStorage.setItem(STORAGE_PROGRESS, JSON.stringify(p));
+  }
+  function getSavedProgress(bookId) {
+    const p = JSON.parse(localStorage.getItem(STORAGE_PROGRESS) || '{}');
+    return p[bookId] || 0;
+  }
+
+  // ==================== ボトムシート制御 ====================
+  function openSheet(tab) {
+    document.querySelectorAll('.sheet-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('.sheet-pane').forEach(p => p.classList.toggle('active', p.id === 'pane' + tab[0].toUpperCase() + tab.slice(1)));
+    if (tab === 'memo') els.memoInput.value = (getMemos()[currentMemoKey()] || {}).text || '';
+    els.sheetOverlay.classList.add('active');
+    els.bottomSheet.classList.add('active');
+  }
+  function closeSheet() {
+    els.sheetOverlay.classList.remove('active');
+    els.bottomSheet.classList.remove('active');
+  }
+  document.querySelectorAll('.sheet-tab').forEach(btn => {
+    btn.addEventListener('click', () => openSheet(btn.dataset.tab));
+  });
+  els.menuBtn.addEventListener('click', () => openSheet('bookmarks'));
+  els.memoBtn.addEventListener('click', () => openSheet('memo'));
+  els.sheetOverlay.addEventListener('click', closeSheet);
+
+  // ==================== キーボード（PC用） ====================
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') nextPage();
+    if (e.key === 'ArrowLeft') previousPage();
+  });
+
+  init();
+</script>
+</body>
+</html>
